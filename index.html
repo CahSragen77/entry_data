@@ -3,211 +3,475 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic StoreOps Dashboard - AM024</title>
+    <title>Goods Receiving & Data Entry System - DCA03 & AM024</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- SheetJS untuk Export Excel -->
+    <!-- Html5-Qrcode CDN -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- SheetJS (Excel Export) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- jsPDF (PDF Export) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
     <!-- Header / Navbar -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
-                <h1 class="text-xl font-bold text-slate-900">AMANDAMART AM024 - Landean Girang</h1>
-                <p class="text-xs text-slate-500">JL. Landean Hilir, Sukamukti, Kec. Katapang, Kab. Bandung</p>
+    <header class="bg-slate-900 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 p-2 rounded-lg font-bold text-lg">📦 GR</div>
+                <div>
+                    <h1 class="text-lg font-semibold tracking-wide">Goods Receiving & Data Entry</h1>
+                    <p class="text-xs text-slate-400">Store: AM024 / DCA03 | Multi-Source Integration</p>
+                </div>
             </div>
             <div class="flex items-center gap-3">
-                <!-- Tombol Upload Data -->
-                <label class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg shadow-sm transition flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                    Upload Data (CSV/JSON)
-                    <input type="file" id="uploadFile" class="hidden" accept=".csv, .json">
-                </label>
-                <!-- Tombol Export Excel -->
-                <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg shadow-sm transition flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    Export ke Excel
-                </button>
+                <span id="connection-status" class="px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    🟢 Online / Ready
+                </span>
+                <input type="text" id="operator-name" placeholder="Nama Penanggung Jawab" class="px-3 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500">
             </div>
         </div>
     </header>
 
     <!-- Main Container -->
-    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <!-- Notifikasi Status Upload -->
-        <div id="uploadStatus" class="hidden bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-xl text-sm flex items-center justify-between">
-            <span id="statusText">Data berhasil dimuat ulang dari file eksternal.</span>
-            <button onclick="resetData()" class="text-xs font-bold underline hover:text-blue-900">Reset ke Default</button>
-        </div>
-
-        <!-- KPI Cards Section -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-xs font-semibold text-slate-400 uppercase">Total Pendapatan</p>
-                <h3 id="kpiPendapatan" class="text-2xl font-bold text-slate-900 mt-1">Rp 982.857.103</h3>
-                <span class="text-xs text-emerald-600 font-medium mt-2 inline-block">22.295 Total Transaksi</span>
-            </div>
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-xs font-semibold text-slate-400 uppercase">Laba Kotor (Gross Profit)</p>
-                <h3 id="kpiLaba" class="text-2xl font-bold text-emerald-600 mt-1">Rp 192.944.058</h3>
-                <span class="text-xs text-slate-500 mt-2 inline-block">Margin Rata-rata: 19.63%</span>
-            </div>
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-xs font-semibold text-slate-400 uppercase">Barang Masuk (PO)</p>
-                <h3 id="kpiBarangMasuk" class="text-2xl font-bold text-blue-600 mt-1">5.820.573 Qty</h3>
-                <span class="text-xs text-slate-500 mt-2 inline-block">Nilai: Rp 970.365.164</span>
-            </div>
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-xs font-semibold text-slate-400 uppercase">Total Retur Barang</p>
-                <h3 id="kpiRetur" class="text-2xl font-bold text-rose-600 mt-1">Rp 131.107.943</h3>
-                <span class="text-xs text-slate-500 mt-2 inline-block">2.525 Dokumen Retur</span>
-            </div>
-        </div>
-
-        <!-- Charts Section -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <h3 class="text-base font-bold text-slate-900 mb-4">Grafik Tren Penjualan Harian</h3>
-                <div class="h-64">
-                    <canvas id="salesChart"></canvas>
+        <!-- Kolom Kiri: Panel Upload & Kamera (Span 1) -->
+        <div class="space-y-6">
+            
+            <!-- Card 1: Data Upload Center -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <span>📂</span> Jendela Upload Data
+                </h2>
+                <div class="space-y-4">
+                    <!-- Master Produk -->
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">1. Master Produk (CSV/Excel)</label>
+                        <input type="file" id="upload-master" accept=".csv, .xlsx, .xls" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer border border-slate-200 rounded-xl">
+                        <p id="master-status" class="text-[11px] text-slate-400 mt-1">Default sample master aktif.</p>
+                    </div>
+                    <!-- Surat Jalan / Manifest Supplier -->
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">2. Manifest Surat Jalan / Faktur Supplier</label>
+                        <input type="file" id="upload-manifest" accept=".csv, .xlsx, .xls" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer border border-slate-200 rounded-xl">
+                        <p id="manifest-status" class="text-[11px] text-slate-400 mt-1">Belum ada manifest di-upload.</p>
+                    </div>
                 </div>
             </div>
-            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <h3 class="text-base font-bold text-slate-900 mb-4">Analisis Peak Hour (Jam Kunjungan Teramai)</h3>
-                <div class="h-64">
-                    <canvas id="peakHourChart"></canvas>
+
+            <!-- Card 2: Kamera Scanner -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-sm font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <span>📷</span> Scanner Kamera & Barcode
+                    </h2>
+                    <button id="toggle-camera" class="px-3 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Buka Kamera</button>
+                </div>
+                <div id="reader-container" class="hidden relative rounded-xl overflow-hidden bg-slate-900 aspect-video mb-3">
+                    <div id="reader"></div>
+                </div>
+                <!-- Fallback Input Manual Barcode -->
+                <div class="flex gap-2">
+                    <input type="text" id="manual-barcode" placeholder="Scan/Ketik Barcode atau PLU..." class="flex-grow px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500">
+                    <button id="btn-submit-barcode" class="bg-slate-900 text-white px-4 py-2 text-sm font-medium rounded-xl hover:bg-slate-800 transition">Cari</button>
                 </div>
             </div>
+
         </div>
 
-        <!-- Tabel 1: Audit Kasir -->
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="p-6 border-b border-slate-100">
-                <h3 class="text-base font-bold text-slate-900">Audit Kinerja & Rekonsiliasi Kasir</h3>
+        <!-- Kolom Kanan: Tabel Hasil Scan & Kontrol (Span 2) -->
+        <div class="lg:col-span-2 space-y-6 flex flex-col">
+            
+            <!-- Card 3: Dashboard Ringkasan & Kontrol Transaksi -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col flex-grow">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <h2 class="text-sm font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <span>📋</span> Daftar Barang Masuk & Hasil Verifikasi
+                    </h2>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="btn-export-excel" class="px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition flex items-center gap-1">📊 Export Excel</button>
+                        <button id="btn-export-pdf" class="px-3 py-1.5 bg-rose-600 text-white text-xs font-medium rounded-lg hover:bg-rose-700 transition flex items-center gap-1">📄 Export PDF</button>
+                        <button id="btn-reset" class="px-3 py-1.5 bg-slate-200 text-slate-700 text-xs font-medium rounded-lg hover:bg-slate-300 transition">🔄 Reset Sesi</button>
+                    </div>
+                </div>
+
+                <!-- Tabel Data -->
+                <div class="overflow-x-auto border border-slate-100 rounded-xl flex-grow">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 uppercase font-semibold">
+                                <th class="p-3">PLU / Barcode</th>
+                                <th class="p-3">Deskripsi Produk</th>
+                                <th class="p-3 text-center">Manifest</th>
+                                <th class="p-3 text-center">Datang (Qty)</th>
+                                <th class="p-3 text-center">Selisih</th>
+                                <th class="p-3">Kategori Status</th>
+                                <th class="p-3 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transaction-table-body" class="divide-y divide-slate-100">
+                            <tr>
+                                <td colspan="7" class="p-6 text-center text-slate-400">Belum ada barang discan atau dimuat. Silakan upload manifest/master lalu scan barcode.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Keterangan Footer / Summary -->
+                <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap justify-between items-center text-xs text-slate-500 gap-2">
+                    <div>Total Item Tercatat: <span id="total-items" class="font-bold text-slate-800">0</span></div>
+                    <div class="flex gap-4">
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Normal</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Kurang/Lebih</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> Retur/Rusak</span>
+                    </div>
+                </div>
+
             </div>
-            <div class="overflow-x-auto">
-                <table id="tableKasir" class="w-full text-left border-collapse text-sm">
-                    <thead>
-                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold border-b">
-                            <th class="p-4">Nama Kasir</th>
-                            <th class="p-4">Hari Kerja</th>
-                            <th class="p-4">Total Penjualan Sistem</th>
-                            <th class="p-4">Setoran Aktual</th>
-                            <th class="p-4">Status Selisih</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <tr>
-                            <td class="p-4 font-medium text-slate-900">SELVI SEPTIANI PUTRI</td>
-                            <td class="p-4 text-slate-600">111 Hari</td>
-                            <td class="p-4 font-semibold text-slate-900">Rp 369.690.120</td>
-                            <td class="p-4 text-slate-600">Rp 369.685.000</td>
-                            <td class="p-4"><span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-semibold">Aman (-Rp 5.120)</span></td>
-                        </tr>
-                        <tr>
-                            <td class="p-4 font-medium text-slate-900">DANIEIL GHIFARI P.U</td>
-                            <td class="p-4 text-slate-600">103 Hari</td>
-                            <td class="p-4 font-semibold text-slate-900">Rp 277.680.400</td>
-                            <td class="p-4 text-slate-600">Rp 277.680.400</td>
-                            <td class="p-4"><span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-semibold">Balance (Rp 0)</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+
         </div>
 
     </main>
 
-    <!-- Script Fungsionalitas Upload & Export -->
+    <!-- Modal Input Detail Barang / Produk Baru -->
+    <div id="item-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <h3 id="modal-title" class="text-base font-bold text-slate-900">Konfirmasi Qty & Kondisi Barang</h3>
+            <div id="modal-product-info" class="bg-slate-50 p-3 rounded-xl text-xs space-y-1 text-slate-600 border border-slate-100">
+                <!-- Info produk diisi dinamis -->
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Jumlah Datang (Qty):</label>
+                    <input type="number" id="modal-qty-input" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500" min="1" value="1">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Kondisi / Kategori Khusus:</label>
+                    <select id="modal-condition-select" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 bg-white">
+                        <option value="NORMAL">Normal / Sesuai</option>
+                        <option value="KURANG">Barang Kurang</option>
+                        <option value="LEBIH">Barang Lebih (Tidak ada di Manifest)</option>
+                        <option value="RETUR_EXPIRED">Retur Expired (Mendekati masa kedaluwarsa)</option>
+                        <option value="RETUR_RUSAK">Retur Kemasan Rusak Pengiriman</option>
+                        <option value="BARU">Alokasi Produk Baru</option>
+                    </select>
+                </div>
+                <div id="new-product-fields" class="hidden space-y-3 pt-2 border-t border-slate-100">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">PLU (Opsional):</label>
+                        <input type="text" id="new-plu-input" placeholder="Masukkan PLU..." class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Deskripsi Produk Baru:</label>
+                        <input type="text" id="new-desc-input" placeholder="Nama / Deskripsi produk..." class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl">
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button id="modal-cancel" class="px-4 py-2 text-xs font-medium text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition">Batal</button>
+                <button id="modal-save" class="px-4 py-2 text-xs font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition">Simpan Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Utama Aplikasi -->
     <script>
-        let salesChartInstance, peakChartInstance;
+        let masterProducts = [];
+        let manifestData = {}; // Format: { plu_or_barcode: { descp, qty_rec, supplier } }
+        let transactions = JSON.parse(localStorage.getItem('am024_transactions')) || [];
+        let html5QrCode = null;
+        let cameraActive = false;
+        let activeScannedItem = null;
 
-        function initCharts() {
-            const salesCtx = document.getElementById('salesChart').getContext('2d');
-            salesChartInstance = new Chart(salesCtx, {
-                type: 'line',
-                data: {
-                    labels: ['31 Mei', '01 Jun', '02 Jun', '03 Jun', '04 Jun', '05 Jun', '06 Jun'],
-                    datasets: [{
-                        label: 'Pendapatan (Rp)',
-                        data: [1108300, 5808374, 5207236, 6850602, 4896417, 9790864, 9335175],
-                        borderColor: '#2563eb',
-                        backgroundColor: 'rgba(37, 99, 235, 0.05)',
-                        tension: 0.3,
-                        fill: true
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        document.addEventListener('DOMContentLoaded', () => {
+            renderTable();
+
+            document.getElementById('toggle-camera').addEventListener('click', toggleCamera);
+            document.getElementById('btn-submit-barcode').addEventListener('click', () => {
+                let code = document.getElementById('manual-barcode').value.trim();
+                if(code) { processScannedCode(code); document.getElementById('manual-barcode').value = ''; }
+            });
+            document.getElementById('btn-reset').addEventListener('click', resetSession);
+            document.getElementById('modal-cancel').addEventListener('click', closeModal);
+            document.getElementById('modal-save').addEventListener('click', saveModalTransaction);
+            document.getElementById('modal-condition-select').addEventListener('change', (e) => {
+                let newFields = document.getElementById('new-product-fields');
+                if(e.target.value === 'BARU') { newFields.classList.remove('hidden'); }
+                else { newFields.classList.add('hidden'); }
             });
 
-            const peakCtx = document.getElementById('peakHourChart').getContext('2d');
-            peakChartInstance = new Chart(peakCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '21:00'],
-                    datasets: [{
-                        label: 'Volume Transaksi',
-                        data: [120, 240, 310, 280, 450, 780, 650, 210],
-                        backgroundColor: '#10b981',
-                        borderRadius: 4
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-            });
-        }
-
-        // Jalankan Chart saat pertama kali dimuat
-        window.onload = initCharts;
-
-        // Fitur Upload File JSON/CSV
-        document.getElementById('uploadFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                try {
-                    const content = event.target.result;
-                    // Jika file berformat JSON
-                    if (file.name.endsWith('.json')) {
-                        const data = JSON.parse(content);
-                        updateDashboardWithData(data);
-                    } else {
-                        // Simulasi pembacaan file CSV sederhana
-                        alert("File CSV berhasil diunggah! Dasbor akan diperbarui.");
-                        document.getElementById('uploadStatus').classList.remove('hidden');
-                        document.getElementById('statusText').innerText = `File "${file.name}" berhasil disinkronkan ke sistem.`;
-                    }
-                } catch (err) {
-                    alert("Format file tidak valid. Pastikan file JSON atau CSV sudah benar.");
-                }
-            };
-            reader.readAsText(file);
+            document.getElementById('upload-master').addEventListener('change', handleMasterUpload);
+            document.getElementById('upload-manifest').addEventListener('change', handleManifestUpload);
         });
 
-        function updateDashboardWithData(data) {
-            if(data.pendapatan) document.getElementById('kpiPendapatan').innerText = data.pendapatan;
-            if(data.laba) document.getElementById('kpiLaba').innerText = data.laba;
-            document.getElementById('uploadStatus').classList.remove('hidden');
-            document.getElementById('statusText').innerText = "Data kustom berhasil diterapkan dari file!";
+        // Handler Master Produk
+        function handleMasterUpload(e) {
+            let file = e.target.files[0];
+            if(!file) return;
+            let reader = new FileReader();
+            reader.onload = function(evt) {
+                let data = new Uint8Array(evt.target.result);
+                let workbook = XLSX.read(data, {type: 'array'});
+                let firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                let rows = XLSX.utils.sheet_to_json(firstSheet);
+                
+                masterProducts = rows.map(r => ({
+                    plu: String(r.plu || r.PLU || ''),
+                    barcode: String(r.barcode || r.Barcode || ''),
+                    descp: String(r.descp || r.DESCP || r.nama_produk || 'Produk')
+                }));
+                document.getElementById('master-status').innerText = `Berhasil memuat ${masterProducts.length} master produk.`;
+            };
+            reader.readAsArrayBuffer(file);
         }
 
-        function resetData() {
-            location.reload();
+        // Handler Manifest / Faktur Supplier (Mendukung format kolom AM024)
+        function handleManifestUpload(e) {
+            let file = e.target.files[0];
+            if(!file) return;
+            let reader = new FileReader();
+            reader.onload = function(evt) {
+                let data = new Uint8Array(evt.target.result);
+                let workbook = XLSX.read(data, {type: 'array'});
+                let firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                let rows = XLSX.utils.sheet_to_json(firstSheet);
+                
+                manifestData = {};
+                rows.forEach(r => {
+                    let plu = String(r.plu || r.PLU || '').trim();
+                    let barcode = String(r.barcode || r.Barcode || '').trim();
+                    let descp = String(r.descp || r.DESCP || 'Tanpa Deskripsi');
+                    let qty = parseFloat(r.qty_rec || r.QTY_REC || r.qty || r.QTY || 0);
+
+                    if(plu) {
+                        manifestData[plu] = { descp, qty_rec: qty, barcode };
+                    }
+                    if(barcode) {
+                        manifestData[barcode] = { descp, qty_rec: qty, plu };
+                    }
+                });
+                document.getElementById('manifest-status').innerText = `Manifest dimuat: ${Object.keys(manifestData).length} entri tercatat.`;
+            };
+            reader.readAsArrayBuffer(file);
         }
 
-        // Fitur Export Tabel ke Excel (.xlsx)
-        function exportToExcel() {
-            // Ambil elemen tabel kasir
-            const table = document.getElementById('tableKasir');
-            const wb = XLSX.utils.table_to_book(table, {sheet: "Audit Kasir AM024"});
+        // Toggle Kamera Scanner
+        function toggleCamera() {
+            let container = document.getElementById('reader-container');
+            let btn = document.getElementById('toggle-camera');
+            if(!cameraActive) {
+                container.classList.remove('hidden');
+                btn.innerText = 'Tutup Kamera';
+                btn.classList.replace('bg-blue-600', 'bg-rose-600');
+                html5QrCode = new Html5Qrcode("reader");
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 150 } },
+                    (decodedText) => { processScannedCode(decodedText); },
+                    (errorMessage) => {}
+                ).catch(err => { console.error(err); alert("Gagal mengaktifkan kamera."); });
+                cameraActive = true;
+            } else {
+                if(html5QrCode) {
+                    html5QrCode.stop().then(() => {
+                        container.classList.add('hidden');
+                        btn.innerText = 'Buka Kamera';
+                        btn.classList.replace('bg-rose-600', 'bg-blue-600');
+                        cameraActive = false;
+                    });
+                }
+            }
+        }
+
+        // Proses Barcode / PLU yang Ditemukan
+        function processScannedCode(code) {
+            let manifestItem = manifestData[code];
+            let masterItem = masterProducts.find(p => p.barcode === code || p.plu === code);
+
+            let descp = manifestItem?.descp || masterItem?.descp || '';
+            let plu = manifestItem?.plu || masterItem?.plu || code;
+            let manifestQty = manifestItem?.qty_rec || 0;
+            let isNew = !manifestItem && !masterItem;
+
+            activeScannedItem = {
+                code: code,
+                plu: plu,
+                descp: descp,
+                manifestQty: manifestQty,
+                isNew: isNew
+            };
+
+            let infoHtml = `
+                <div><b>Kode/Barcode:</b> ${code}</div>
+                <div><b>PLU:</b> ${plu}</div>
+                <div><b>Deskripsi:</b> ${descp || 'Produk tidak ditemukan di Manifest/Master'}</div>
+                <div><b>Qty di Manifest:</b> ${manifestQty}</div>
+            `;
+            document.getElementById('modal-product-info').innerHTML = infoHtml;
+            document.getElementById('modal-qty-input').value = 1;
             
-            // Simpan file dengan nama dinamis
-            XLSX.writeFile(wb, "Laporan_Audit_Kasir_AM024.xlsx");
+            let conditionSelect = document.getElementById('modal-condition-select');
+            if(isNew) {
+                conditionSelect.value = 'BARU';
+                document.getElementById('new-product-fields').classList.remove('hidden');
+                document.getElementById('new-plu-input').value = code;
+                document.getElementById('new-desc-input').value = '';
+            } else {
+                conditionSelect.value = 'NORMAL';
+                document.getElementById('new-product-fields').classList.add('hidden');
+            }
+
+            document.getElementById('item-modal').classList.remove('hidden');
         }
+
+        function closeModal() {
+            document.getElementById('item-modal').classList.add('hidden');
+            activeScannedItem = null;
+        }
+
+        function saveModalTransaction() {
+            if(!activeScannedItem) return;
+            let qtyDatang = parseInt(document.getElementById('modal-qty-input').value) || 0;
+            let condition = document.getElementById('modal-condition-select').value;
+            
+            if(condition === 'BARU') {
+                activeScannedItem.plu = document.getElementById('new-plu-input').value || activeScannedItem.code;
+                activeScannedItem.descp = document.getElementById('new-desc-input').value || 'Produk Baru Alokasi';
+            }
+
+            let manifestQty = activeScannedItem.manifestQty;
+            let selisih = qtyDatang - manifestQty;
+            let keterangan = condition;
+
+            if(condition === 'BARU') keterangan = "Alokasi Produk Baru";
+            else if(condition === 'RETUR_EXPIRED') keterangan = "Retur Expired";
+            else if(condition === 'RETUR_RUSAK') keterangan = "Retur kemasan rusak pengiriman";
+            else if(manifestQty === 0 && !activeScannedItem.isNew) keterangan = "Barang Lebih (Tidak ada di manifest)";
+            else if(selisih < 0) keterangan = `Barang Kurang (Kurang ${Math.abs(selisih)})`;
+            else if(selisih > 0) keterangan = "Barang Lebih";
+            else keterangan = "Normal / Sesuai";
+
+            let transactionItem = {
+                id: Date.now(),
+                tanggal: new Date().toLocaleDateString('id-ID'),
+                user: document.getElementById('operator-name').value || 'Staf Gudang AM024',
+                plu: activeScannedItem.plu,
+                barcode: activeScannedItem.code,
+                descp: activeScannedItem.descp,
+                manifestQty: manifestQty,
+                qtyDatang: qtyDatang,
+                selisih: selisih,
+                keterangan: keterangan
+            };
+
+            transactions.push(transactionItem);
+            localStorage.setItem('am024_transactions', JSON.stringify(transactions));
+            renderTable();
+            closeModelDirect();
+        }
+
+        function closeModelDirect() {
+            document.getElementById('item-modal').classList.add('hidden');
+        }
+
+        function renderTable() {
+            let tbody = document.getElementById('transaction-table-body');
+            document.getElementById('total-items').innerText = transactions.length;
+
+            if(transactions.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">Belum ada barang discan atau dimuat. Silakan upload manifest/master lalu scan barcode.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            transactions.forEach((tx) => {
+                let badgeColor = "bg-emerald-100 text-emerald-800";
+                if(tx.keterangan.includes("Kurang") || tx.keterangan.includes("Retur")) badgeColor = "bg-rose-100 text-rose-800";
+                else if(tx.keterangan.includes("Lebih") || tx.keterangan.includes("Baru")) badgeColor = "bg-amber-100 text-amber-800";
+
+                let tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="p-3 font-mono text-slate-600">${tx.plu}<br><span class="text-[10px] text-slate-400">${tx.barcode}</span></td>
+                    <td class="p-3 font-medium text-slate-900">${tx.descp}</td>
+                    <td class="p-3 text-center">${tx.manifestQty}</td>
+                    <td class="p-3 text-center font-bold">${tx.qtyDatang}</td>
+                    <td class="p-3 text-center font-semibold ${tx.selisih < 0 ? 'text-rose-600' : tx.selisih > 0 ? 'text-amber-600' : 'text-slate-600'}">${tx.selisih > 0 ? '+' + tx.selisih : tx.selisih}</td>
+                    <td class="p-3"><span class="px-2.5 py-1 rounded-full text-[10px] font-semibold ${badgeColor}">${tx.keterangan}</span></td>
+                    <td class="p-3 text-center">
+                        <button onclick="deleteTransaction(${tx.id})" class="text-rose-500 hover:text-rose-700 font-medium text-xs">Hapus</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function deleteTransaction(id) {
+            transactions = transactions.filter(t => t.id !== id);
+            localStorage.setItem('am024_transactions', JSON.stringify(transactions));
+            renderTable();
+        }
+
+        function resetSession() {
+            if(confirm("Apakah Anda yakin ingin mereset sesi dan menghapus seluruh data entry saat ini?")) {
+                transactions = [];
+                localStorage.removeItem('am024_transactions');
+                renderTable();
+            }
+        }
+
+        // Export Excel
+        document.getElementById('btn-export-excel').addEventListener('click', () => {
+            if(transactions.length === 0) { alert("Belum ada data untuk diexport!"); return; }
+            let exportData = transactions.map(t => ({
+                "Tanggal Input": t.tanggal,
+                "Penanggung Jawab": t.user,
+                "PLU": t.plu,
+                "Barcode": t.barcode,
+                "Deskripsi Produk": t.descp,
+                "Qty Manifest": t.manifestQty,
+                "Qty Datang": t.qtyDatang,
+                "Selisih": t.selisih,
+                "Keterangan / Kondisi": t.keterangan
+            }));
+            let worksheet = XLSX.utils.json_to_sheet(exportData);
+            let workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Goods Receiving AM024");
+            XLSX.writeFile(workbook, `Laporan_Goods_Receiving_AM024_${new Date().toISOString().slice(0,10)}.xlsx`);
+        });
+
+        // Export PDF
+        document.getElementById('btn-export-pdf').addEventListener('click', () => {
+            if(transactions.length === 0) { alert("Belum ada data untuk diexport!"); return; }
+            const { jsPDF } = window.jspdf;
+            let doc = new jsPDF('landscape');
+            
+            doc.setFontSize(14);
+            doc.text("Laporan Penerimaan Barang & Goods Receiving - Store AM024", 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Tanggal Cetak: ${new Date().toLocaleString('id-ID')} | Penanggung Jawab: ${document.getElementById('operator-name').value || 'Staf Gudang'}`, 14, 22);
+
+            let tableRows = transactions.map(t => [
+                t.tanggal, t.plu, t.descp, t.manifestQty, t.qtyDatang, t.selisih, t.keterangan, t.user
+            ]);
+
+            doc.autoTable({
+                head: [['Tanggal', 'PLU', 'Deskripsi Produk', 'Manifest', 'Datang', 'Selisih', 'Keterangan', 'User']],
+                body: tableRows,
+                startY: 28,
+                theme: 'grid',
+                styles: { fontSize: 8 }
+            });
+
+            doc.save(`Laporan_Goods_Receiving_AM024_${new Date().toISOString().slice(0,10)}.pdf`);
+        });
     </script>
 </body>
 </html>
